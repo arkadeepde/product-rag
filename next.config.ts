@@ -8,7 +8,14 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "fakestoreapi.com",
       },
+      {
+        protocol:"https",
+        hostname:"cdn.dummyjson.com"
+      }
     ],
+  },
+  env: {
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   },
 };
 
