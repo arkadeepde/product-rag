@@ -5,9 +5,9 @@ import { ShoppingCart, LogIn } from "lucide-react";
 import { useState } from "react";
 
 export default function Header() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [cartCount, setCartCount] = useState(0); // Mock cart count
 
-  setCartCount(0);
 
   return (
     <header className="bg-white shadow-md py-4">
