@@ -1,6 +1,5 @@
 "use client";
 
-import type { Metadata } from "next";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { ShoppingCart } from "lucide-react";
@@ -43,17 +42,6 @@ export default function ProductsPage() {
     product.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Slider settings
-  const sliderSettings = {
-    dots: true,
-    infinite: true,
-    speed: 500,
-    slidesToShow: 1,
-    slidesToScroll: 1,
-    autoplay: true,
-    autoplaySpeed: 3000,
-    arrows: false,
-  };
 
   return (
     <div className="container mx-auto p-6">

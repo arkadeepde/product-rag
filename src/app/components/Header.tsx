@@ -7,6 +7,8 @@ import { useState } from "react";
 export default function Header() {
   const [cartCount, setCartCount] = useState(0); // Mock cart count
 
+  setCartCount(0);
+
   return (
     <header className="bg-white shadow-md py-4">
       <div className="container mx-auto flex justify-between items-center px-4">

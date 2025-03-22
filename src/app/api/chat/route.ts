@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-export async function POST(req: any) {
+export async function POST(req: NextRequest) {
   try {
     const { messages } = await req.json();
 
@@ -20,10 +20,10 @@ export async function POST(req: any) {
       success: true,
       message: completion.choices[0]?.message?.content || "No response found.",
     });
-  } catch (error : any) {
+  } catch (error : unknown) {
     console.error("OpenAI API Error:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Something went wrong!" },
+      { success: false, error: "Something went wrong!" },
       { status: 500 }
     );
   }

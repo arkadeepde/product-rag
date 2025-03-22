@@ -20,7 +20,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
       content: `You are a product assistant. Here is the product information:\n
       **Title:** ${productTitle}\n
       **Description:** ${productDescription}\n
-      **Data:** ${localStorage.getItem("productData")}`,
+      **Data:** ${productMetaData} ${localStorage.getItem("productData")}`,
     },
     {
       role: "assistant",
