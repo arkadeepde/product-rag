@@ -6,10 +6,9 @@ import Image from "next/image";
 import Head from "next/head";
 import Loader from "../../components/Loader";
 import ChatLauncher from "../../components/ChatLauncher";
-import Zoom from 'react-medium-image-zoom';
-import 'react-medium-image-zoom/dist/styles.css';
+import Zoom from "react-medium-image-zoom";
+import "react-medium-image-zoom/dist/styles.css";
 
-// Define the Product type
 interface Product {
   id: number;
   title: string;
@@ -39,7 +38,6 @@ interface Product {
   images: string[];
 }
 
-// Fetch product details based on ID
 async function getProduct(productId: string) {
   const res = await fetch(`https://dummyjson.com/products/${productId}`);
   if (!res.ok) {
@@ -58,7 +56,8 @@ export default function ProductDetails({
   const [productData, setProductData] = useState<string | null>("");
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string>("");
-  const fallbackImage = "/fallback.png"; // Place this in /public/images/fallback.png
+  const [mainImageLoading, setMainImageLoading] = useState(true);
+  const fallbackImage = "/fallback.png";
 
   useEffect(() => {
     const productId = unwrappedParams.id.split("-")[0];
@@ -99,7 +98,10 @@ export default function ProductDetails({
               key={index}
               className={`border rounded-lg p-1 cursor-pointer ${img === selectedImage ? "border-blue-500" : "border-gray-200"
                 }`}
-              onClick={() => setSelectedImage(img)}
+              onClick={() => {
+                setMainImageLoading(true);
+                setSelectedImage(img);
+              }}
             >
               <Image
                 src={img}
@@ -115,8 +117,13 @@ export default function ProductDetails({
           ))}
         </div>
 
-        {/* Main Image */}
-        <div className="flex-1">
+        {/* Main Image with Loader */}
+        <div className="flex-1 relative">
+          {mainImageLoading && (
+            <div className="absolute inset-0 flex items-center justify-center z-10 bg-white/60 rounded-lg">
+              <Loader />
+            </div>
+          )}
           <Zoom key={selectedImage}>
             <Image
               src={selectedImage}
@@ -124,6 +131,8 @@ export default function ProductDetails({
               width={500}
               height={500}
               className="w-full object-contain rounded-lg shadow-lg"
+              onLoadStart={() => setMainImageLoading(true)}
+              onLoadingComplete={() => setMainImageLoading(false)}
               onError={(e) => {
                 (e.target as HTMLImageElement).src = fallbackImage;
               }}
@@ -165,20 +174,14 @@ export default function ProductDetails({
         </div>
       </div>
 
-      {/* Product Information Section */}
+      {/* Product Info */}
       <div className="mt-12">
         <h2 className="text-2xl font-bold text-gray-800 mb-4">Product Information</h2>
         <div className="bg-gray-50 p-6 rounded-lg shadow-md space-y-2">
           <ul className="text-gray-700 space-y-2">
-            <li>
-              <span className="font-semibold">Brand:</span> {product.brand}
-            </li>
-            <li>
-              <span className="font-semibold">Return Policy:</span> {product.returnPolicy}
-            </li>
-            <li>
-              <span className="font-semibold">Warranty:</span> {product.warrantyInformation}
-            </li>
+            <li><span className="font-semibold">Brand:</span> {product.brand}</li>
+            <li><span className="font-semibold">Return Policy:</span> {product.returnPolicy}</li>
+            <li><span className="font-semibold">Warranty:</span> {product.warrantyInformation}</li>
             {product.dimensions && (
               <li>
                 <span className="font-semibold">Dimensions:</span>{" "}
