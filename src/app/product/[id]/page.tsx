@@ -6,6 +6,8 @@ import Image from "next/image";
 import Head from "next/head";
 import Loader from "../../components/Loader";
 import ChatLauncher from "../../components/ChatLauncher";
+import Zoom from 'react-medium-image-zoom';
+import 'react-medium-image-zoom/dist/styles.css';
 
 // Define the Product type
 interface Product {
@@ -112,6 +114,7 @@ export default function ProductDetails({
 
         {/* Main Image */}
         <div className="flex-1">
+          <Zoom>
           <Image
             src={selectedImage}
             alt={product.title}
@@ -119,6 +122,7 @@ export default function ProductDetails({
             height={500}
             className="w-full object-contain rounded-lg shadow-lg"
           />
+          </Zoom>
         </div>
 
         {/* Product Info */}
