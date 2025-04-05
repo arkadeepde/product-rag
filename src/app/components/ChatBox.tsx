@@ -9,12 +9,17 @@ interface ChatBoxProps {
   productMetaData: string;
 }
 
+type ChatMessage = {
+  role: "user" | "assistant" | "system";
+  content: string;
+};
+
 const ChatBox: React.FC<ChatBoxProps> = ({
   productTitle,
   productDescription,
   productMetaData,
 }) => {
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "system",
       content: `You are a product assistant. Here is the product information:\n
@@ -48,7 +53,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
     }
   }, [messages, displayedAssistantMessage]);
 
-  const handleSubmit = async (question?: string) => {
+  const handleSubmit = async (question?: string): Promise<void> => {
     const input = question || userInput.trim();
 
     if (!input) {
@@ -57,7 +62,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
     }
 
     setError(null);
-    const newMessages = [...messages, { role: "user", content: input }];
+    const newMessages: ChatMessage[] = [...messages, { role: "user", content: input }];
     setMessages(newMessages);
     setUserInput("");
     setIsLoading(true);
@@ -87,7 +92,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
     setIsLoading(false);
   };
 
-  const typeAssistantMessage = (fullMessage: string, updatedMessages: any[]) => {
+  const typeAssistantMessage = (fullMessage: string, updatedMessages: ChatMessage[]) => {
     let index = 0;
     setDisplayedAssistantMessage("");
 
