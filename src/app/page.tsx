@@ -1,15 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import Head from "next/head";
-import Loader from "../app/components/Loader"; // Import Loader
-import "slick-carousel/slick/slick.css";
-import "slick-carousel/slick/slick-theme.css";
+import Loader from "../app/components/Loader";
 
-// Define the Product type
 interface Product {
   id: number;
   title: string;
@@ -24,7 +21,11 @@ interface Product {
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(true); // Loader state
+  const [loading, setLoading] = useState(true);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<number>(-1);
+
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -37,58 +38,93 @@ export default function ProductsPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  // Filter products based on search term
   const filteredProducts = products.filter((product) =>
     product.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || filteredProducts.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveSuggestionIndex((prev) =>
+        prev < filteredProducts.slice(0, 5).length - 1 ? prev + 1 : 0
+      );
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveSuggestionIndex((prev) =>
+        prev > 0 ? prev - 1 : filteredProducts.slice(0, 5).length - 1
+      );
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const selected = filteredProducts[activeSuggestionIndex];
+      if (selected) {
+        setSearchTerm(selected.title);
+        setShowSuggestions(false);
+        setActiveSuggestionIndex(-1);
+      }
+    }
+  };
 
   return (
     <div className="container mx-auto p-6">
-      {/* Page title */}
       <Head>
         <title>Explore Our Products | E-Commerce</title>
-        <meta
-          name="description"
-          content="Browse and explore a variety of amazing products."
-        />
+        <meta name="description" content="Browse and explore a variety of amazing products." />
       </Head>
-
-      {/* Full-width, half-screen slider */}
-      {/* <div className="w-full h-[50vh] mb-8">
-        <Slider {...sliderSettings}>
-            <div key='1' className="relative h-[50vh] w-full">
-              <Image
-                src=""
-                alt=""
-                layout="fill"
-                objectFit="cover"
-                className="rounded-lg"
-              />
-              <div className="absolute bottom-0 left-0 bg-black bg-opacity-50 w-full p-4 text-white text-lg font-semibold">
-                
-              </div>
-            </div>
-          
-        </Slider>
-      </div> */}
 
       <h1 className="text-4xl font-extrabold text-center mb-6 text-gray-800">
         Explore Our Products
       </h1>
 
-      {/* Search Box */}
-      <div className="flex justify-center mb-6">
-        <input
-          type="text"
-          placeholder="Search products..."
-          className="w-full max-w-lg p-3 border-2 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+      {/* Autocomplete Search Box */}
+      <div className="flex justify-center mb-6 relative w-full">
+        <div className="relative w-full max-w-lg">
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder="Search products..."
+            className="w-full p-3 border-2 border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setShowSuggestions(true);
+              setActiveSuggestionIndex(-1);
+            }}
+            onFocus={() => {
+              if (searchTerm) setShowSuggestions(true);
+            }}
+            onBlur={() => {
+              setTimeout(() => setShowSuggestions(false), 100);
+            }}
+            onKeyDown={handleKeyDown}
+          />
+          {showSuggestions && searchTerm && (
+            <ul className="absolute z-10 bg-white border border-gray-200 w-full mt-1 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+              {filteredProducts.slice(0, 5).map((product, index) => (
+                <li
+                  key={product.id}
+                  className={`px-4 py-2 cursor-pointer ${
+                    index === activeSuggestionIndex ? "bg-blue-100" : "hover:bg-gray-100"
+                  }`}
+                  onMouseDown={() => {
+                    setSearchTerm(product.title);
+                    setShowSuggestions(false);
+                    setActiveSuggestionIndex(-1);
+                  }}
+                >
+                  {product.title}
+                </li>
+              ))}
+              {filteredProducts.length === 0 && (
+                <li className="px-4 py-2 text-gray-500">No products found</li>
+              )}
+            </ul>
+          )}
+        </div>
       </div>
 
-      {/* Show Loader if Loading */}
+      {/* Loader or Product Grid */}
       {loading ? (
         <Loader />
       ) : (
@@ -106,7 +142,7 @@ export default function ProductsPage() {
                 className="w-full h-48 object-contain rounded-lg"
               />
               <h2
-                className="text-lg font-semibold mt-3 text-gray-800 line-clamp-2 h-[55px] overflow-hidden"
+                className="text-lg font-semibold mt-3 text-gray-800 line-clamp-2 h-[55px]"
                 title={product.title}
               >
                 {product.title}
