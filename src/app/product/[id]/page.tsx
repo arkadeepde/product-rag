@@ -58,6 +58,7 @@ export default function ProductDetails({
   const [productData, setProductData] = useState<string | null>("");
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string>("");
+  const fallbackImage = "/fallback.png"; // Place this in /public/images/fallback.png
 
   useEffect(() => {
     const productId = unwrappedParams.id.split("-")[0];
@@ -96,9 +97,8 @@ export default function ProductDetails({
           {product.images?.map((img, index) => (
             <div
               key={index}
-              className={`border rounded-lg p-1 cursor-pointer ${
-                img === selectedImage ? "border-blue-500" : "border-gray-200"
-              }`}
+              className={`border rounded-lg p-1 cursor-pointer ${img === selectedImage ? "border-blue-500" : "border-gray-200"
+                }`}
               onClick={() => setSelectedImage(img)}
             >
               <Image
@@ -107,6 +107,9 @@ export default function ProductDetails({
                 width={60}
                 height={60}
                 className="object-contain rounded"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = fallbackImage;
+                }}
               />
             </div>
           ))}
@@ -114,14 +117,17 @@ export default function ProductDetails({
 
         {/* Main Image */}
         <div className="flex-1">
-          <Zoom>
-          <Image
-            src={selectedImage}
-            alt={product.title}
-            width={500}
-            height={500}
-            className="w-full object-contain rounded-lg shadow-lg"
-          />
+          <Zoom key={selectedImage}>
+            <Image
+              src={selectedImage}
+              alt={product.title}
+              width={500}
+              height={500}
+              className="w-full object-contain rounded-lg shadow-lg"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = fallbackImage;
+              }}
+            />
           </Zoom>
         </div>
 
