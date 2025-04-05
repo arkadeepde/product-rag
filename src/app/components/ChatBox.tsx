@@ -31,11 +31,10 @@ const ChatBox: React.FC<ChatBoxProps> = ({
   const [userInput, setUserInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Create a ref to the chat container
+  const [displayedAssistantMessage, setDisplayedAssistantMessage] = useState("");
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const typingSpeed = 30; // milliseconds between characters
 
-  // Predefined questions
   const predefinedQuestions = [
     "What are the key features?",
     "Is there a discount available?",
@@ -43,18 +42,15 @@ const ChatBox: React.FC<ChatBoxProps> = ({
     "What’s the shipping information?",
   ];
 
-  // Scroll to the bottom of the chat after messages update
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, displayedAssistantMessage]);
 
-  // Handle user input submission
   const handleSubmit = async (question?: string) => {
     const input = question || userInput.trim();
 
-    // Validation check
     if (!input) {
       setError("⚠️ Please enter a message before sending.");
       return;
@@ -65,8 +61,8 @@ const ChatBox: React.FC<ChatBoxProps> = ({
     setMessages(newMessages);
     setUserInput("");
     setIsLoading(true);
+    setDisplayedAssistantMessage(""); // reset typing message
 
-    // Send API request
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -78,7 +74,8 @@ const ChatBox: React.FC<ChatBoxProps> = ({
 
       const data = await response.json();
       if (data.success) {
-        setMessages([...newMessages, { role: "assistant", content: data.message }]);
+        setMessages([...newMessages, { role: "assistant", content: "" }]);
+        typeAssistantMessage(data.message, newMessages);
       } else {
         setMessages([...newMessages, { role: "assistant", content: "⚠️ Error fetching response!" }]);
       }
@@ -90,12 +87,29 @@ const ChatBox: React.FC<ChatBoxProps> = ({
     setIsLoading(false);
   };
 
-  // Handle predefined question click - Calls API directly
+  const typeAssistantMessage = (fullMessage: string, updatedMessages: any[]) => {
+    let index = 0;
+    setDisplayedAssistantMessage("");
+
+    const typingInterval = setInterval(() => {
+      setDisplayedAssistantMessage((prev) => {
+        const next = prev + fullMessage.charAt(index);
+        index++;
+        return next;
+      });
+
+      if (index >= fullMessage.length) {
+        clearInterval(typingInterval);
+        setMessages([...updatedMessages, { role: "assistant", content: fullMessage }]);
+        setDisplayedAssistantMessage("");
+      }
+    }, typingSpeed);
+  };
+
   const handlePredefinedQuestion = async (question: string) => {
     await handleSubmit(question);
   };
 
-  // Handle key press (submit on Enter key)
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       handleSubmit();
@@ -106,7 +120,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
     <div className="bg-white border rounded-lg shadow-md p-4 w-full max-w-4xl mx-auto">
       <h2 className="text-lg font-bold mb-3 text-gray-800">Chat with AI Assistant</h2>
 
-      {/* Chat Messages Container */}
+      {/* Chat Messages */}
       <div
         ref={chatContainerRef}
         className="h-80 overflow-y-auto mb-3 bg-gray-50 p-2 border rounded"
@@ -119,12 +133,22 @@ const ChatBox: React.FC<ChatBoxProps> = ({
             }`}
           >
             <div className="p-2 rounded-lg bg-gray-100 inline-block text-left max-w-xs">
-              {/* Render message with Markdown */}
               <ReactMarkdown>{msg.content}</ReactMarkdown>
             </div>
           </div>
         ))}
-        {isLoading && (
+
+        {/* Typing Effect */}
+        {displayedAssistantMessage && (
+          <div className="mb-2 text-left text-sm text-gray-700">
+            <div className="p-2 rounded-lg bg-gray-100 inline-block text-left max-w-xs">
+              <ReactMarkdown>{displayedAssistantMessage}</ReactMarkdown>
+            </div>
+          </div>
+        )}
+
+        {/* Optional loading dots */}
+        {isLoading && !displayedAssistantMessage && (
           <div className="text-left text-sm text-gray-500">
             <div className="flex items-center space-x-1">
               <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
@@ -158,7 +182,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
           placeholder="Ask a question..."
           value={userInput}
           onChange={(e) => setUserInput(e.target.value)}
-          onKeyDown={handleKeyPress} // Submit on Enter
+          onKeyDown={handleKeyPress}
         />
         <button
           onClick={() => handleSubmit()}
