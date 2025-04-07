@@ -35,6 +35,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
   ]);
   const [userInput, setUserInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [displayedAssistantMessage, setDisplayedAssistantMessage] = useState("");
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -53,7 +54,6 @@ const ChatBox: React.FC<ChatBoxProps> = ({
     }
   }, [messages, displayedAssistantMessage]);
 
-  // Only runs on client
   useEffect(() => {
     const productData = localStorage.getItem("productData");
     if (productData) {
@@ -70,10 +70,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
 
   const handleSubmit = async (question?: string): Promise<void> => {
     const input = question || userInput.trim();
-    if (!input) {
-      setError("⚠️ Please enter a message before sending.");
-      return;
-    }
+    if (!input || isLoading || isTyping) return;
 
     setError(null);
     const newMessages: ChatMessage[] = [...messages, { role: "user", content: input }];
@@ -81,6 +78,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
     setUserInput("");
     setIsLoading(true);
     setDisplayedAssistantMessage("");
+    setIsTyping(true);
 
     try {
       const response = await fetch("/api/chat", {
@@ -96,19 +94,31 @@ const ChatBox: React.FC<ChatBoxProps> = ({
         setMessages([...newMessages, { role: "assistant", content: "" }]);
         typeAssistantMessage(data.message, newMessages);
       } else {
-        setMessages([...newMessages, { role: "assistant", content: "⚠️ Error fetching response!" }]);
+        setMessages([
+          ...newMessages,
+          { role: "assistant", content: "⚠️ Error fetching response!" },
+        ]);
+        setIsTyping(false);
       }
     } catch (error) {
       console.error("Error calling OpenAI API:", error);
-      setMessages([...newMessages, { role: "assistant", content: "❗ Failed to get response." }]);
+      setMessages([
+        ...newMessages,
+        { role: "assistant", content: "❗ Failed to get response." },
+      ]);
+      setIsTyping(false);
     }
 
     setIsLoading(false);
   };
 
-  const typeAssistantMessage = (fullMessage: string, updatedMessages: ChatMessage[]) => {
+  const typeAssistantMessage = (
+    fullMessage: string,
+    updatedMessages: ChatMessage[]
+  ) => {
     let index = 0;
     setDisplayedAssistantMessage("");
+    setIsTyping(true);
 
     const typingInterval = setInterval(() => {
       setDisplayedAssistantMessage((prev) => {
@@ -119,8 +129,12 @@ const ChatBox: React.FC<ChatBoxProps> = ({
 
       if (index >= fullMessage.length) {
         clearInterval(typingInterval);
-        setMessages([...updatedMessages, { role: "assistant", content: fullMessage }]);
+        setMessages([
+          ...updatedMessages,
+          { role: "assistant", content: fullMessage },
+        ]);
         setDisplayedAssistantMessage("");
+        setIsTyping(false);
       }
     }, typingSpeed);
   };
@@ -182,7 +196,12 @@ const ChatBox: React.FC<ChatBoxProps> = ({
           <button
             key={index}
             onClick={() => handlePredefinedQuestion(question)}
-            className="bg-gray-200 text-sm px-3 py-1 rounded-md hover:bg-gray-300"
+            disabled={isLoading || isTyping}
+            className={`text-sm px-3 py-1 rounded-md ${
+              isLoading || isTyping
+                ? "bg-gray-300 cursor-not-allowed"
+                : "bg-gray-200 hover:bg-gray-300"
+            }`}
           >
             {question}
           </button>
@@ -200,10 +219,16 @@ const ChatBox: React.FC<ChatBoxProps> = ({
           value={userInput}
           onChange={(e) => setUserInput(e.target.value)}
           onKeyDown={handleKeyPress}
+          disabled={isLoading || isTyping}
         />
         <button
           onClick={() => handleSubmit()}
-          className="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600"
+          className={`px-3 py-2 rounded-lg text-white ${
+            isLoading || isTyping
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-blue-500 hover:bg-blue-600"
+          }`}
+          disabled={isLoading || isTyping}
         >
           Send
         </button>
