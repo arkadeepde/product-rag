@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import ReactMarkdown from "react-markdown";
+import MarkdownRenderer from "./MarkdownRenderer";
 
 interface ChatBoxProps {
   productTitle: string;
@@ -25,7 +25,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
       content: `You are a product assistant. Here is the product information:\n
       **Title:** ${productTitle}\n
       **Description:** ${productDescription}\n
-      **Data:** ${productMetaData} ${localStorage.getItem("productData")}`,
+      **Data:** ${productMetaData}`,
     },
     {
       role: "assistant",
@@ -38,7 +38,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [displayedAssistantMessage, setDisplayedAssistantMessage] = useState("");
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  const typingSpeed = 30; // milliseconds between characters
+  const typingSpeed = 30;
 
   const predefinedQuestions = [
     "What are the key features?",
@@ -53,9 +53,23 @@ const ChatBox: React.FC<ChatBoxProps> = ({
     }
   }, [messages, displayedAssistantMessage]);
 
+  // Only runs on client
+  useEffect(() => {
+    const productData = localStorage.getItem("productData");
+    if (productData) {
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[0] = {
+          ...updated[0],
+          content: `${updated[0].content}\n${productData}`,
+        };
+        return updated;
+      });
+    }
+  }, []);
+
   const handleSubmit = async (question?: string): Promise<void> => {
     const input = question || userInput.trim();
-
     if (!input) {
       setError("⚠️ Please enter a message before sending.");
       return;
@@ -66,7 +80,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({
     setMessages(newMessages);
     setUserInput("");
     setIsLoading(true);
-    setDisplayedAssistantMessage(""); // reset typing message
+    setDisplayedAssistantMessage("");
 
     try {
       const response = await fetch("/api/chat", {
@@ -138,21 +152,19 @@ const ChatBox: React.FC<ChatBoxProps> = ({
             }`}
           >
             <div className="p-2 rounded-lg bg-gray-100 inline-block text-left max-w-xs">
-              <ReactMarkdown>{msg.content}</ReactMarkdown>
+              <MarkdownRenderer content={msg.content} />
             </div>
           </div>
         ))}
 
-        {/* Typing Effect */}
         {displayedAssistantMessage && (
           <div className="mb-2 text-left text-sm text-gray-700">
             <div className="p-2 rounded-lg bg-gray-100 inline-block text-left max-w-xs">
-              <ReactMarkdown>{displayedAssistantMessage}</ReactMarkdown>
+              <MarkdownRenderer content={displayedAssistantMessage} />
             </div>
           </div>
         )}
 
-        {/* Optional loading dots */}
         {isLoading && !displayedAssistantMessage && (
           <div className="text-left text-sm text-gray-500">
             <div className="flex items-center space-x-1">
@@ -197,7 +209,6 @@ const ChatBox: React.FC<ChatBoxProps> = ({
         </button>
       </div>
 
-      {/* Error message */}
       {error && <div className="text-red-500 text-sm mt-1">{error}</div>}
     </div>
   );
