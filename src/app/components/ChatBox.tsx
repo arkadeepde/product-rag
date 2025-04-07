@@ -19,23 +19,9 @@ const ChatBox: React.FC<ChatBoxProps> = ({
   productDescription,
   productMetaData,
 }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: "system",
-      content: `You are a product assistant. Here is the product information:\n
-      **Title:** ${productTitle}\n
-      **Description:** ${productDescription}\n
-      **Data:** ${productMetaData}`,
-    },
-    {
-      role: "assistant",
-      content:
-        "👋 Hi! I'm your product assistant. Ask me anything about this product, or choose from the questions below!",
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [userInput, setUserInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [displayedAssistantMessage, setDisplayedAssistantMessage] = useState("");
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -48,29 +34,57 @@ const ChatBox: React.FC<ChatBoxProps> = ({
     "What’s the shipping information?",
   ];
 
+  // Load chat history from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(`chatHistory_${productTitle}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setMessages(parsed);
+          return;
+        }
+      } catch (e) {
+        console.error("Failed to parse chat history:", e);
+      }
+    }
+
+    // Initialize default messages if no history found
+    setMessages([
+      {
+        role: "system",
+        content: `You are a product assistant. Here is the product information:\n
+        **Title:** ${productTitle}\n
+        **Description:** ${productDescription}\n
+        **Data:** ${productMetaData}`,
+      },
+      {
+        role: "assistant",
+        content:
+          "👋 Hi! I'm your product assistant. Ask me anything about this product, or choose from the questions below!",
+      },
+    ]);
+  }, [productTitle]);
+
+  // Save messages to localStorage per product
+  useEffect(() => {
+    if (messages.length > 2) {
+      localStorage.setItem(`chatHistory_${productTitle}`, JSON.stringify(messages));
+    }
+  }, [messages, productTitle]);
+
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages, displayedAssistantMessage]);
 
-  useEffect(() => {
-    const productData = localStorage.getItem("productData");
-    if (productData) {
-      setMessages((prev) => {
-        const updated = [...prev];
-        updated[0] = {
-          ...updated[0],
-          content: `${updated[0].content}\n${productData}`,
-        };
-        return updated;
-      });
-    }
-  }, []);
-
   const handleSubmit = async (question?: string): Promise<void> => {
     const input = question || userInput.trim();
-    if (!input || isLoading || isTyping) return;
+    if (!input) {
+      setError("⚠️ Please enter a message before sending.");
+      return;
+    }
 
     setError(null);
     const newMessages: ChatMessage[] = [...messages, { role: "user", content: input }];
@@ -78,14 +92,11 @@ const ChatBox: React.FC<ChatBoxProps> = ({
     setUserInput("");
     setIsLoading(true);
     setDisplayedAssistantMessage("");
-    setIsTyping(true);
 
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: newMessages }),
       });
 
@@ -94,31 +105,19 @@ const ChatBox: React.FC<ChatBoxProps> = ({
         setMessages([...newMessages, { role: "assistant", content: "" }]);
         typeAssistantMessage(data.message, newMessages);
       } else {
-        setMessages([
-          ...newMessages,
-          { role: "assistant", content: "⚠️ Error fetching response!" },
-        ]);
-        setIsTyping(false);
+        setMessages([...newMessages, { role: "assistant", content: "⚠️ Error fetching response!" }]);
+        setIsLoading(false);
       }
     } catch (error) {
       console.error("Error calling OpenAI API:", error);
-      setMessages([
-        ...newMessages,
-        { role: "assistant", content: "❗ Failed to get response." },
-      ]);
-      setIsTyping(false);
+      setMessages([...newMessages, { role: "assistant", content: "❗ Failed to get response." }]);
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
-  const typeAssistantMessage = (
-    fullMessage: string,
-    updatedMessages: ChatMessage[]
-  ) => {
+  const typeAssistantMessage = (fullMessage: string, updatedMessages: ChatMessage[]) => {
     let index = 0;
     setDisplayedAssistantMessage("");
-    setIsTyping(true);
 
     const typingInterval = setInterval(() => {
       setDisplayedAssistantMessage((prev) => {
@@ -129,29 +128,54 @@ const ChatBox: React.FC<ChatBoxProps> = ({
 
       if (index >= fullMessage.length) {
         clearInterval(typingInterval);
-        setMessages([
-          ...updatedMessages,
-          { role: "assistant", content: fullMessage },
-        ]);
+        setMessages([...updatedMessages, { role: "assistant", content: fullMessage }]);
         setDisplayedAssistantMessage("");
-        setIsTyping(false);
+        setIsLoading(false);
       }
     }, typingSpeed);
   };
 
   const handlePredefinedQuestion = async (question: string) => {
-    await handleSubmit(question);
+    if (!isLoading) {
+      await handleSubmit(question);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !isLoading) {
       handleSubmit();
     }
+  };
+
+  const handleClearHistory = () => {
+    localStorage.removeItem(`chatHistory_${productTitle}`);
+    setMessages([
+      {
+        role: "system",
+        content: `You are a product assistant. Here is the product information:\n
+        **Title:** ${productTitle}\n
+        **Description:** ${productDescription}\n
+        **Data:** ${productMetaData}`,
+      },
+      {
+        role: "assistant",
+        content:
+          "👋 Hi! I'm your product assistant. Ask me anything about this product, or choose from the questions below!",
+      },
+    ]);
   };
 
   return (
     <div className="bg-white border rounded-lg shadow-md p-4 w-full max-w-4xl mx-auto">
       <h2 className="text-lg font-bold mb-3 text-gray-800">Chat with AI Assistant</h2>
+
+      {/* Clear History */}
+      <button
+        className="text-sm text-red-500 hover:underline mb-3"
+        onClick={handleClearHistory}
+      >
+        Clear Chat History
+      </button>
 
       {/* Chat Messages */}
       <div
@@ -196,12 +220,8 @@ const ChatBox: React.FC<ChatBoxProps> = ({
           <button
             key={index}
             onClick={() => handlePredefinedQuestion(question)}
-            disabled={isLoading || isTyping}
-            className={`text-sm px-3 py-1 rounded-md ${
-              isLoading || isTyping
-                ? "bg-gray-300 cursor-not-allowed"
-                : "bg-gray-200 hover:bg-gray-300"
-            }`}
+            className="bg-gray-200 text-sm px-3 py-1 rounded-md hover:bg-gray-300 disabled:opacity-50"
+            disabled={isLoading}
           >
             {question}
           </button>
@@ -219,16 +239,12 @@ const ChatBox: React.FC<ChatBoxProps> = ({
           value={userInput}
           onChange={(e) => setUserInput(e.target.value)}
           onKeyDown={handleKeyPress}
-          disabled={isLoading || isTyping}
+          disabled={isLoading}
         />
         <button
           onClick={() => handleSubmit()}
-          className={`px-3 py-2 rounded-lg text-white ${
-            isLoading || isTyping
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-blue-500 hover:bg-blue-600"
-          }`}
-          disabled={isLoading || isTyping}
+          className="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50"
+          disabled={isLoading}
         >
           Send
         </button>
